@@ -1,13 +1,14 @@
 import React, { useState, useRef } from 'react';
-import { Client, DocumentFile, AnalysisResult } from '../types';
+import { Client, DocumentFile, AnalysisResult, ContractType } from '../types';
 import { analyzeDocument } from '../services/geminiService';
 import { Layout } from './Layout';
-import { Users, FileText, Upload, RefreshCw, Eye, EyeOff, Plus, Trash2, Shield, X, Save, Clock } from 'lucide-react';
+import { Users, FileText, Upload, RefreshCw, Eye, EyeOff, Plus, Trash2, Shield, X, Save, Clock, Pencil, Briefcase } from 'lucide-react';
 
 interface AdminDashboardProps {
   clients: Client[];
   documents: DocumentFile[];
   onAddClient: (name: string) => Client;
+  onEditClient: (id: string, newName: string, newContractType: ContractType) => void;
   onDeleteClient: (id: string) => void;
   onUpdatePermissions: (clientId: string, viewableIds: string[]) => void;
   onAddDocument: (doc: DocumentFile) => void;
@@ -18,6 +19,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   clients,
   documents,
   onAddClient,
+  onEditClient,
   onDeleteClient,
   onUpdatePermissions,
   onAddDocument,
@@ -32,6 +34,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Permissions Modal State
   const [editingPermissionsClient, setEditingPermissionsClient] = useState<Client | null>(null);
   const [tempPermissions, setTempPermissions] = useState<string[]>([]);
+
+  // Edit Client Modal State
+  const [clientToEdit, setClientToEdit] = useState<Client | null>(null);
+  const [editClientName, setEditClientName] = useState('');
+  const [editContractType, setEditContractType] = useState<ContractType>('sin_contrato');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,6 +55,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       };
       reader.onerror = error => reject(error);
     });
+  };
+
+  const getContractLabel = (type?: ContractType) => {
+    switch (type) {
+      case 'pack_horas': return 'Pack por horas';
+      case 'mensual': return 'Mensual';
+      case 'sin_contrato': return 'Sin contrato';
+      default: return 'Sin contrato';
+    }
+  };
+
+  const getContractBadgeColor = (type?: ContractType) => {
+    switch (type) {
+      case 'pack_horas': return 'bg-orange-100 text-orange-800';
+      case 'mensual': return 'bg-purple-100 text-purple-800';
+      case 'sin_contrato': return 'bg-gray-100 text-gray-600';
+      default: return 'bg-gray-100 text-gray-600';
+    }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,6 +148,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (newClientName.trim()) {
       onAddClient(newClientName.trim());
       setNewClientName('');
+    }
+  };
+
+  // Edit Client Logic
+  const openEditClientModal = (client: Client) => {
+    setClientToEdit(client);
+    setEditClientName(client.name);
+    setEditContractType(client.contractType || 'sin_contrato');
+  };
+
+  const saveEditedClient = () => {
+    if (clientToEdit && editClientName.trim()) {
+      onEditClient(clientToEdit.id, editClientName.trim(), editContractType);
+      setClientToEdit(null);
     }
   };
 
@@ -297,6 +336,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre Cliente</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Docs</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contrato</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Último Acceso</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contraseña</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
@@ -323,6 +363,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                               {docCount}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getContractBadgeColor(client.contractType)}`}>
+                              {getContractLabel(client.contractType)}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -353,6 +398,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             <div className="flex items-center gap-3">
                               <button 
+                                onClick={() => openEditClientModal(client)}
+                                title="Editar Cliente"
+                                className="text-blue-600 hover:text-blue-900 font-medium transition-colors"
+                              >
+                                <Pencil size={18} />
+                              </button>
+                              <button 
                                 onClick={() => openPermissionsModal(client)}
                                 title="Gestionar Permisos de Visualización"
                                 className="text-indigo-600 hover:text-indigo-900 font-medium transition-colors"
@@ -373,7 +425,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     })}
                     {clients.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-6 py-10 text-center text-gray-500 text-sm">
+                        <td colSpan={6} className="px-6 py-10 text-center text-gray-500 text-sm">
                           No hay clientes registrados. Sube un documento para crear uno automáticamente o añádelo manualmente.
                         </td>
                       </tr>
@@ -384,6 +436,72 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           )}
         </div>
+
+        {/* Edit Client Modal */}
+        {clientToEdit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full overflow-hidden flex flex-col">
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Editar Cliente</h3>
+                <button 
+                  onClick={() => setClientToEdit(null)} 
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del Cliente</label>
+                  <div className="relative">
+                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Users className="h-4 w-4 text-gray-400" />
+                     </div>
+                    <input
+                      type="text"
+                      value={editClientName}
+                      onChange={(e) => setEditClientName(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm"
+                      placeholder="Nombre empresa"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de Contrato</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Briefcase className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <select
+                      value={editContractType}
+                      onChange={(e) => setEditContractType(e.target.value as ContractType)}
+                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm bg-white"
+                    >
+                      <option value="sin_contrato">Sin contrato</option>
+                      <option value="pack_horas">Pack por horas</option>
+                      <option value="mensual">Mensual</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                <button
+                  onClick={() => setClientToEdit(null)}
+                  className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={saveEditedClient}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Permissions Modal */}
         {editingPermissionsClient && (

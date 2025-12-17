@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ClientDashboard } from './components/ClientDashboard';
-import { AuthState, Client, DocumentFile, UserRole } from './types';
+import { AuthState, Client, DocumentFile, UserRole, ContractType } from './types';
 import { Lock, User, ArrowRight } from 'lucide-react';
 
 // --- Helper for generating secure-looking passwords ---
@@ -16,8 +16,8 @@ const generatePassword = () => {
 
 // --- Initial Mock Data ---
 const INITIAL_CLIENTS: Client[] = [
-  { id: '1', name: 'Construcciones S.A.', password: generatePassword(), viewableClientIds: [] },
-  { id: '2', name: 'Talleres Mecánicos Paco', password: generatePassword(), viewableClientIds: [] },
+  { id: '1', name: 'Construcciones S.A.', password: generatePassword(), viewableClientIds: [], contractType: 'mensual' },
+  { id: '2', name: 'Talleres Mecánicos Paco', password: generatePassword(), viewableClientIds: [], contractType: 'sin_contrato' },
 ];
 
 const App: React.FC = () => {
@@ -73,10 +73,15 @@ const App: React.FC = () => {
       id: crypto.randomUUID(),
       name: name,
       password: generatePassword(),
-      viewableClientIds: []
+      viewableClientIds: [],
+      contractType: 'sin_contrato'
     };
     setClients(prev => [...prev, newClient]);
     return newClient;
+  };
+
+  const handleEditClient = (id: string, newName: string, newContractType: ContractType) => {
+    setClients(prev => prev.map(c => c.id === id ? { ...c, name: newName, contractType: newContractType } : c));
   };
 
   const handleDeleteClient = (id: string) => {
@@ -174,6 +179,7 @@ const App: React.FC = () => {
         clients={clients}
         documents={documents}
         onAddClient={handleAddClient}
+        onEditClient={handleEditClient}
         onDeleteClient={handleDeleteClient}
         onUpdatePermissions={handleUpdatePermissions}
         onAddDocument={handleAddDocument}

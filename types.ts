@@ -3,6 +3,8 @@ export enum UserRole {
   CLIENT = 'CLIENT'
 }
 
+export type ContractType = 'pack_horas' | 'mensual' | 'sin_contrato';
+
 export interface Client {
   id: string;
   name: string;
@@ -10,6 +12,7 @@ export interface Client {
   email?: string;
   viewableClientIds?: string[]; // IDs of other clients this client can view
   lastLogin?: string; // ISO String timestamp of last login
+  contractType?: ContractType;
 }
 
 export interface Material {
